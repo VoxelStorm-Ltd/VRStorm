@@ -431,7 +431,7 @@ void manager::init() {
             std::cout << "VRStorm: Loading device " << it.id << "'s render model: " << render_model_name << "...";
             vr::EVRRenderModelError model_load_error = render_models->LoadRenderModel_Async(render_model_name.c_str(), &model);
             while(model_load_error == vr::VRRenderModelError_Loading) {
-              std::this_thread::sleep_for(std::chrono::milliseconds(100));        // just sleep-wait for the models to load
+              std::this_thread::sleep_for(std::chrono::milliseconds(100));      // just sleep-wait for the models to load
               std::cout << ".";
               model_load_error = render_models->LoadRenderModel_Async(render_model_name.c_str(), &model);
             }
