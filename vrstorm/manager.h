@@ -7,13 +7,14 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #ifdef __MINGW32__
-  #include "openvr_mingw.hpp"
+  #include <openvr_mingw.hpp>
 #else
-  #include "openvr.h"
+  #include <openvr.h>
 #endif // __MINGW32__
 #include "platform_defines.h"
 #include "vectorstorm/vector/vector2.h"
 #include "vectorstorm/matrix/matrix4.h"
+#include "controller.h"
 
 #ifdef VRSTORM_DISABLED
   #define VRSTORM_CONST_IF_DISABLED __attribute__((__const__));
@@ -23,9 +24,9 @@
 
 namespace vrstorm {
 
-struct controller;
-
 class manager {
+  friend class input::controller;
+
   void *lib = nullptr;
 
   #ifndef VRSTORM_DISABLED
@@ -44,6 +45,7 @@ class manager {
 public:
   #ifndef VRSTORM_DISABLED
     std::vector<controller> controllers;
+    input::controller input_controller;
   #endif // VRSTORM_DISABLED
   matrix4f hmd_position;
 

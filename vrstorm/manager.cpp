@@ -5,10 +5,12 @@
 #include "cast_if_required.h"
 #include "dynamic_load.h"
 #include "vectorstorm/vector/vector3.h"
+#include "input/controller.h"
 
 namespace vrstorm {
 
-manager::manager() {
+manager::manager()
+  : input_controller(*this) {
   /// Default constructor
 }
 
@@ -386,7 +388,24 @@ void manager::init() {
 
       for(auto const &i : controller_ids) {
         // identify the attached controllers
-        std::cout << "VRStorm: Controller " << i << ":" << std::endl;
+        controllers.emplace_back();
+        controllers.back().id = i;
+        std::cout << "VRStorm: Controller " << i;
+        switch(hmd_handle->GetControllerRoleForTrackedDeviceIndex(i)) {
+        case vr::TrackedControllerRole_LeftHand:
+          std::cout << " (left): " << std::endl;
+          controllers.back().hand = input::controller::hand_type::LEFT;
+          break;
+        case vr::TrackedControllerRole_RightHand:
+          std::cout << " (right): " << std::endl;
+          controllers.back().hand = input::controller::hand_type::RIGHT;
+          break;
+        case vr::TrackedControllerRole_Invalid:
+        default:
+          std::cout << ": " << std::endl;
+          controllers.back().hand = input::controller::hand_type::UNKNOWN;
+          break;
+        }
         for(unsigned int axis = 0; axis != vr::Prop_Axis4Type_Int32 - vr::Prop_Axis0Type_Int32; ++axis) {
           vr::EVRControllerAxisType const controller_axis_type = static_cast<vr::EVRControllerAxisType>(hmd_handle->GetInt32TrackedDeviceProperty(i, static_cast<vr::ETrackedDeviceProperty>(vr::Prop_Axis0Type_Int32 + axis)));
           switch(controller_axis_type) {
@@ -410,8 +429,6 @@ void manager::init() {
           std::cout << "VRStorm:   button " << button << ": " << hmd_handle->GetButtonIdNameFromEnum(static_cast<vr::EVRButtonId>(button)) << std::endl;
         }
         */
-        controllers.emplace_back();
-        controllers.back().id = i;
       }
       if(hmd_handle->IsInputFocusCapturedByAnotherProcess()) {
         std::cout << "VRStorm: Input focus is currently held by another process." << std::endl;
@@ -521,6 +538,310 @@ void manager::update() {
       eye_to_head_transform[static_cast<unsigned int>(vr::EVREye::Eye_Left )] = matrix4f::from_row_major_34_array(*hmd_handle->GetEyeToHeadTransform(vr::EVREye::Eye_Left ).m).inverse();
       eye_to_head_transform[static_cast<unsigned int>(vr::EVREye::Eye_Right)] = matrix4f::from_row_major_34_array(*hmd_handle->GetEyeToHeadTransform(vr::EVREye::Eye_Right).m).inverse();
     }
+
+    vr::VREvent_t event;
+    while(hmd_handle->PollNextEvent(&event, sizeof(event))) {                   // poll for any new events in the queue
+      #ifdef DEBUG_VRSTORM
+        std::cout << "VRStorm: DEBUG: polled an event: " << hmd_handle->GetEventTypeNameFromEnum(static_cast<vr::EVREventType>(event.eventType)) << " on device " << static_cast<int64_t>(event.trackedDeviceIndex) << std::endl;
+      #endif // DEBUG_VRSTORM
+      switch(event.eventType) {
+      case vr::VREvent_None:
+        break;
+      case vr::VREvent_TrackedDeviceActivated:                                  // when a new device is activated / connected
+        // TODO: update the tracked device listings
+        input_controller.update_hands();
+        input_controller.update_names();
+        break;
+      case vr::VREvent_TrackedDeviceDeactivated:                                // when a device is deactivated / disconnected
+        // TODO: update the tracked device listings
+        input_controller.update_hands();
+        input_controller.update_names();
+        break;
+      case vr::VREvent_TrackedDeviceUpdated:
+        break;
+      case vr::VREvent_TrackedDeviceUserInteractionStarted:                     // when the headset wakes up
+        break;
+      case vr::VREvent_TrackedDeviceUserInteractionEnded:                       // when the headset goes to sleep
+        break;
+      case vr::VREvent_IpdChanged:
+        break;
+      case vr::VREvent_EnterStandbyMode:                                        // when the headset goes to sleep
+        break;
+      case vr::VREvent_LeaveStandbyMode:                                        // when the headset wakes up
+        break;
+      case vr::VREvent_TrackedDeviceRoleChanged:
+        break;
+      // input:
+      case vr::VREvent_ButtonPress:                                             // data is controller
+        {
+          unsigned int const button = event.data.controller.button;
+          switch(hmd_handle->GetControllerRoleForTrackedDeviceIndex(event.trackedDeviceIndex)) {
+          case vr::TrackedControllerRole_LeftHand:
+            #ifdef DEBUG_VRSTORM
+              std::cout << "VRStorm: DEBUG: button " << button << " press on left controller begin" << std::endl;
+            #endif // DEBUG_VRSTORM
+            input_controller.execute_button(input::controller::hand_type::LEFT, button, input::controller::actiontype::PRESS);
+            break;
+          case vr::TrackedControllerRole_RightHand:
+            #ifdef DEBUG_VRSTORM
+              std::cout << "VRStorm: DEBUG: button " << button << " press on right controller begin" << std::endl;
+            #endif // DEBUG_VRSTORM
+            input_controller.execute_button(input::controller::hand_type::RIGHT, button, input::controller::actiontype::PRESS);
+            break;
+          default:
+            std::cout << "VRStorm: WARNING: button " << button << " press on unknown controller begin!" << std::endl;
+            break;
+          }
+        }
+        break;
+      case vr::VREvent_ButtonUnpress:                                           // data is controller
+        {
+          unsigned int const button = event.data.controller.button;
+          switch(hmd_handle->GetControllerRoleForTrackedDeviceIndex(event.trackedDeviceIndex)) {
+          case vr::TrackedControllerRole_LeftHand:
+            #ifdef DEBUG_VRSTORM
+              std::cout << "VRStorm: DEBUG: button " << button << " press on left controller end" << std::endl;
+            #endif // DEBUG_VRSTORM
+            input_controller.execute_button(input::controller::hand_type::LEFT, button, input::controller::actiontype::RELEASE);
+            break;
+          case vr::TrackedControllerRole_RightHand:
+            #ifdef DEBUG_VRSTORM
+              std::cout << "VRStorm: DEBUG: button " << button << " press on right controller end" << std::endl;
+            #endif // DEBUG_VRSTORM
+            input_controller.execute_button(input::controller::hand_type::RIGHT, button, input::controller::actiontype::RELEASE);
+            break;
+          default:
+            std::cout << "VRStorm: WARNING: button " << button << " press on unknown controller end!" << std::endl;
+            break;
+          }
+        }
+        break;
+      case vr::VREvent_ButtonTouch:                                             // data is controller
+        {
+          unsigned int const button = event.data.controller.button;
+          switch(hmd_handle->GetControllerRoleForTrackedDeviceIndex(event.trackedDeviceIndex)) {
+          case vr::TrackedControllerRole_LeftHand:
+            #ifdef DEBUG_VRSTORM
+              std::cout << "VRStorm: DEBUG: button " << button << " touch on left controller begin" << std::endl;
+            #endif // DEBUG_VRSTORM
+            input_controller.execute_button(input::controller::hand_type::LEFT, button, input::controller::actiontype::TOUCH);
+            break;
+          case vr::TrackedControllerRole_RightHand:
+            #ifdef DEBUG_VRSTORM
+              std::cout << "VRStorm: DEBUG: button " << button << " touch on right controller begin" << std::endl;
+            #endif // DEBUG_VRSTORM
+            input_controller.execute_button(input::controller::hand_type::RIGHT, button, input::controller::actiontype::TOUCH);
+            break;
+          default:
+            std::cout << "VRStorm: WARNING: button " << button << " touch on unknown controller begin!" << std::endl;
+            break;
+          }
+        }
+        break;
+      case vr::VREvent_ButtonUntouch:                                           // data is controller
+        {
+          unsigned int const button = event.data.controller.button;
+          switch(hmd_handle->GetControllerRoleForTrackedDeviceIndex(event.trackedDeviceIndex)) {
+          case vr::TrackedControllerRole_LeftHand:
+            #ifdef DEBUG_VRSTORM
+              std::cout << "VRStorm: DEBUG: button " << button << " touch on left controller end" << std::endl;
+            #endif // DEBUG_VRSTORM
+            input_controller.execute_button(input::controller::hand_type::LEFT, button, input::controller::actiontype::UNTOUCH);
+            break;
+          case vr::TrackedControllerRole_RightHand:
+            #ifdef DEBUG_VRSTORM
+              std::cout << "VRStorm: DEBUG: button " << button << " touch on right controller end" << std::endl;
+            #endif // DEBUG_VRSTORM
+            input_controller.execute_button(input::controller::hand_type::RIGHT, button, input::controller::actiontype::UNTOUCH);
+            break;
+          default:
+            std::cout << "VRStorm: WARNING: button " << button << " touch on unknown controller end!" << std::endl;
+            break;
+          }
+        }
+        break;
+      case vr::VREvent_MouseMove:                                               // data is mouse
+        break;
+      case vr::VREvent_MouseButtonDown:                                         // data is mouse
+        break;
+      case vr::VREvent_MouseButtonUp:                                           // data is mouse
+        break;
+      case vr::VREvent_FocusEnter:                                              // data is overlay
+        break;
+      case vr::VREvent_FocusLeave:                                              // data is overlay
+        break;
+      case vr::VREvent_Scroll:                                                  // data is mouse
+        break;
+      case vr::VREvent_TouchPadMove:                                            // data is mouse
+        break;
+      case vr::VREvent_InputFocusCaptured:                                      // data is process DEPRECATED
+        break;
+      case vr::VREvent_InputFocusReleased:                                      // data is process DEPRECATED
+        break;
+      case vr::VREvent_SceneFocusLost:                                          // data is process
+        break;
+      case vr::VREvent_SceneFocusGained:                                        // data is process
+        break;
+      case vr::VREvent_SceneApplicationChanged:                                 // data is process - The App actually drawing the scene changed (usually to or from the compositor)
+        break;
+      case vr::VREvent_SceneFocusChanged:                                       // data is process - New app got access to draw the scene
+        break;
+      case vr::VREvent_InputFocusChanged:                                       // data is process
+        break;
+      case vr::VREvent_SceneApplicationSecondaryRenderingStarted:               // data is process
+        break;
+      case vr::VREvent_HideRenderModels:                                        // Sent to the scene application to request hiding render models temporarily
+        break;
+      case vr::VREvent_ShowRenderModels:                                        // Sent to the scene application to request restoring render model visibility
+        break;
+      case vr::VREvent_OverlayShown:
+        break;
+      case vr::VREvent_OverlayHidden:
+        break;
+      case vr::VREvent_DashboardActivated:                                      // user opens the dashboard, i.e. with hmd button
+        break;
+      case vr::VREvent_DashboardDeactivated:                                    // user closes the dashboard, i.e. with hmd button
+        break;
+      case vr::VREvent_DashboardThumbSelected:                                  // Sent to the overlay manager - data is overlay
+        break;
+      case vr::VREvent_DashboardRequested:                                      // Sent to the overlay manager - data is overlay
+        break;
+      case vr::VREvent_ResetDashboard:                                          // Send to the overlay manager
+        break;
+      case vr::VREvent_RenderToast:                                             // Send to the dashboard to render a toast - data is the notification ID
+        break;
+      case vr::VREvent_ImageLoaded:                                             // Sent to overlays when a SetOverlayRaw or SetOverlayFromFile call finishes loading
+        break;
+      case vr::VREvent_ShowKeyboard:                                            // Sent to keyboard renderer in the dashboard to invoke it
+        break;
+      case vr::VREvent_HideKeyboard:                                            // Sent to keyboard renderer in the dashboard to hide it
+        break;
+      case vr::VREvent_OverlayGamepadFocusGained:                               // Sent to an overlay when IVROverlay::SetFocusOverlay is called on it
+        break;
+      case vr::VREvent_OverlayGamepadFocusLost:                                 // Send to an overlay when it previously had focus and IVROverlay::SetFocusOverlay is called on something else
+        break;
+      case vr::VREvent_OverlaySharedTextureChanged:
+        break;
+      case vr::VREvent_DashboardGuideButtonDown:
+        break;
+      case vr::VREvent_DashboardGuideButtonUp:
+        break;
+      case vr::VREvent_ScreenshotTriggered:                                     // Screenshot button combo was pressed, Dashboard should request a screenshot
+        break;
+      case vr::VREvent_ImageFailed:                                             // Sent to overlays when a SetOverlayRaw or SetOverlayfromFail fails to load
+        break;
+      // screenshot API:
+      case vr::VREvent_RequestScreenshot:                                       // Sent by vrclient application to compositor to take a screenshot
+        break;
+      case vr::VREvent_ScreenshotTaken:                                         // Sent by compositor to the application that the screenshot has been taken
+        break;
+      case vr::VREvent_ScreenshotFailed:                                        // Sent by compositor to the application that the screenshot failed to be taken
+        break;
+      case vr::VREvent_SubmitScreenshotToDashboard:                             // Sent by compositor to the dashboard that a completed screenshot was submitted
+        break;
+      case vr::VREvent_Notification_Shown:
+        break;
+      case vr::VREvent_Notification_Hidden:
+        break;
+      case vr::VREvent_Notification_BeginInteraction:
+        break;
+      case vr::VREvent_Notification_Destroyed:
+        break;
+      case vr::VREvent_Quit:                                                    // data is process
+        break;
+      case vr::VREvent_ProcessQuit:                                             // data is process
+        break;
+      case vr::VREvent_QuitAborted_UserPrompt:                                  // data is process
+        break;
+      case vr::VREvent_QuitAcknowledged:                                        // data is process
+        break;
+      case vr::VREvent_DriverRequestedQuit:                                     // The driver has requested that SteamVR shut down
+        break;
+      case vr::VREvent_ChaperoneDataHasChanged:
+        break;
+      case vr::VREvent_ChaperoneUniverseHasChanged:
+        break;
+      case vr::VREvent_ChaperoneTempDataHasChanged:
+        break;
+      case vr::VREvent_ChaperoneSettingsHaveChanged:
+        break;
+      case vr::VREvent_SeatedZeroPoseReset:
+        break;
+      case vr::VREvent_AudioSettingsHaveChanged:
+        break;
+      case vr::VREvent_BackgroundSettingHasChanged:
+        break;
+      case vr::VREvent_CameraSettingsHaveChanged:
+        break;
+      case vr::VREvent_ReprojectionSettingHasChanged:
+        break;
+      case vr::VREvent_ModelSkinSettingsHaveChanged:
+        break;
+      case vr::VREvent_EnvironmentSettingsHaveChanged:
+        break;
+      case vr::VREvent_StatusUpdate:
+        break;
+      case vr::VREvent_MCImageUpdated:
+        break;
+      case vr::VREvent_FirmwareUpdateStarted:
+        break;
+      case vr::VREvent_FirmwareUpdateFinished:
+        break;
+      case vr::VREvent_KeyboardClosed:
+        break;
+      case vr::VREvent_KeyboardCharInput:
+        break;
+      case vr::VREvent_KeyboardDone:                                            // Sent when DONE button clicked on keyboard
+        break;
+      case vr::VREvent_ApplicationTransitionStarted:
+        break;
+      case vr::VREvent_ApplicationTransitionAborted:
+        break;
+      case vr::VREvent_ApplicationTransitionNewAppStarted:
+        break;
+      case vr::VREvent_ApplicationListUpdated:
+        break;
+      case vr::VREvent_Compositor_MirrorWindowShown:
+        break;
+      case vr::VREvent_Compositor_MirrorWindowHidden:
+        break;
+      case vr::VREvent_Compositor_ChaperoneBoundsShown:
+        break;
+      case vr::VREvent_Compositor_ChaperoneBoundsHidden:
+        break;
+      case vr::VREvent_TrackedCamera_StartVideoStream:
+        break;
+      case vr::VREvent_TrackedCamera_StopVideoStream:
+        break;
+      case vr::VREvent_TrackedCamera_PauseVideoStream:
+        break;
+      case vr::VREvent_TrackedCamera_ResumeVideoStream:
+        break;
+      case vr::VREvent_PerformanceTest_EnableCapture:
+        break;
+      case vr::VREvent_PerformanceTest_DisableCapture:
+        break;
+      case vr::VREvent_PerformanceTest_FidelityLevel:
+        break;
+      case vr::VREvent_VendorSpecific_Reserved_Start:                           // Vendors are free to expose private events in this reserved region
+      case vr::VREvent_VendorSpecific_Reserved_End:
+      default:
+        if(event.eventType >= vr::VREvent_VendorSpecific_Reserved_Start &&
+           event.eventType <= vr::VREvent_VendorSpecific_Reserved_End) {
+          #ifdef DEBUG_VRSTORM
+            std::cout << "VRStorm: Received a vendor specific event on device " << event.trackedDeviceIndex << ", type " << event.eventType << std::endl;
+          #endif // DEBUG_VRSTORM
+        } else {
+          //#ifdef DEBUG_VRSTORM
+            std::cout << "VRStorm: Received an unknown event on device " << event.trackedDeviceIndex << ", type " << event.eventType << std::endl;
+          //#endif // DEBUG_VRSTORM
+        }
+        break;
+      }
+    }
+
+    // poll and update the analogue controller axes
+    input_controller.poll();
   #endif // VRSTORM_DISABLED
 }
 
