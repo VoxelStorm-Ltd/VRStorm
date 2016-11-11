@@ -1,12 +1,12 @@
 #ifndef VRSTORM_BINDING_SETS_CONTROLLER_AXIS_H_INCLUDED
 #define VRSTORM_BINDING_SETS_CONTROLLER_AXIS_H_INCLUDED
 
+#include <unordered_map>
+#include <boost/range/iterator_range.hpp>
 #include "inputstorm/binding_sets/base.h"
 #include "vrstorm/input/controller.h"
 
 namespace vrstorm {
-template<typename T> class binding_manager;
-
 namespace binding_sets {
 
 #define BINDING_SET_TYPE std::unordered_multimap<T, input::controller::binding_axis>
@@ -16,8 +16,11 @@ template<typename T>
 class controller_axis : public BASE_TYPE {
   using controltype = T;
 
+  vrstorm::input::controller &parent_controller;
+
 public:
-  controller_axis(inputstorm::manager &input_manager, binding_manager<controltype> &parent_binding_manager);
+  controller_axis(inputstorm::binding_manager<controltype> &parent_binding_manager,
+                  vrstorm::input::controller &this_parent_controller);
   virtual ~controller_axis();
 
   // bind and unbind controls to inputs
@@ -51,9 +54,10 @@ public:
 };
 
 template<typename T>
-controller_axis<T>::controller_axis(inputstorm::manager &input_manager,
-                                    binding_manager<controltype> &parent_binding_manager)
-  : BASE_TYPE(input_manager, parent_binding_manager) {
+controller_axis<T>::controller_axis(inputstorm::binding_manager<controltype> &parent_binding_manager,
+                                    vrstorm::input::controller &this_parent_controller)
+  : BASE_TYPE(parent_binding_manager),
+    parent_controller(this_parent_controller) {
   /// Default constructor
 }
 
@@ -67,6 +71,9 @@ controller_axis<T>::~controller_axis() {
 template<typename T>
 void controller_axis<T>::unbind(std::string const &binding_name, controltype control) {
   /// Erase a control binding from an input controller axis relationship
+  #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+    std::cout << "VRStorm: DEBUG: Unbinding controller axis for control " << static_cast<unsigned int>(control) << " on set " << binding_name << std::endl;
+  #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
   auto &binding_set(this->binding_sets[binding_name]);
   binding_set.erase(control);                                                   // clear the current associations with that control
   update_all(control);                                                          // update all controller axes, because they're not separable into components
@@ -85,6 +92,17 @@ void controller_axis<T>::bind(std::string const &binding_name,
                               float saturation_max,
                               float centre) {
   /// Apply a new control binding to an input key relationship
+  #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+    std::cout << "VRStorm: DEBUG: Binding control " << static_cast<unsigned int>(control)
+              << " in set " << binding_name
+              << ", controller " << parent_controller.get_name(hand)
+              << " axis " << axis
+              << " direction " << static_cast<unsigned int>(direction);
+    if(flip) {
+      std::cout << " (inverted)";
+    }
+    std::cout << std::endl;
+  #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
   auto &binding_set(this->binding_sets[binding_name]);
   binding_set.emplace(control, input::controller::binding_axis{
     hand,
@@ -111,8 +129,8 @@ void controller_axis<T>::bind(controltype control,
                               float saturation_max,
                               float centre) {
   /// Wrapper to work on the selected control set
-  #ifdef DEBUG_INPUTSTORM
-    std::cout << "InputStorm: DEBUG: Binding control " << static_cast<unsigned int>(control)
+  #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+    std::cout << "VRStorm: DEBUG: Binding control " << static_cast<unsigned int>(control)
               << " in set " << this->binding_selected_name
               << ", controller hand " << static_cast<unsigned int>(hand)
               << " axis " << axis
@@ -121,7 +139,7 @@ void controller_axis<T>::bind(controltype control,
       std::cout << " (inverted)";
     }
     std::cout << std::endl;
-  #endif // DEBUG_INPUTSTORM
+  #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
   bind(this->binding_selected_name, control, hand, axis, direction, flip, deadzone_min, deadzone_max, saturation_min, saturation_max, centre);
 }
 
@@ -130,15 +148,24 @@ void controller_axis<T>::bind(controltype control,
 template<typename T>
 void controller_axis<T>::update_all(controltype control) {
   /// Update controller axis bindings for this control
+  #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+    std::cout << "VRStorm: DEBUG: Updating all controller axis bindings for control " << static_cast<unsigned int>(control) << std::endl;
+  #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
   auto const &binding_set(this->get_selected_binding_set());
   auto const &binding_range(binding_set.equal_range(control));
   for(auto const &it : boost::make_iterator_range(binding_range.first, binding_range.second)) {
     auto const &func(this->bindings.action_bindings_analogue[static_cast<unsigned int>(control)]);
     input::controller::binding_axis const &this_binding = it.second;
     if(func) {
-      this->input.controller.bind_axis(this_binding, func);
+      #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+        std::cout << "VRStorm: DEBUG: Updating binding in set " << this->binding_selected_name
+                                                                << " for controller " << parent_controller.get_name(this_binding.hand)
+                                                                << " axis " << this_binding.axis
+                                                                << " direction " << static_cast<unsigned int>(this_binding.direction) << std::endl;
+      #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+      parent_controller.bind_axis(this_binding, func);
     } else {
-      this->input.controller.unbind_axis(this_binding.hand, this_binding.axis, this_binding.direction);
+      parent_controller.unbind_axis(this_binding.hand, this_binding.axis, this_binding.direction);
     }
   }
 }

@@ -432,6 +432,9 @@ void manager::init() {
       } else {
         std::cout << "VRStorm: Input focus is available for capture." << std::endl;
       }
+      input_controller.init();
+      input_controller.update_hands();
+      input_controller.update_names();
 
       // get render models if available, the following replaces vr::IVRRenderModels *render_models = vr::VRRenderModels();
       vr::IVRRenderModels *render_models = static_cast<vr::IVRRenderModels*>(VR_GetGenericInterface(vr::IVRRenderModels_Version, &vr_error));
@@ -530,7 +533,11 @@ void manager::update() {
 
     float const new_ipd = hmd_handle->GetFloatTrackedDeviceProperty(0, vr::Prop_UserIpdMeters_Float);
     if(ipd != new_ipd) {                                                        // cache the new eye to head transforms only when IPD changes
-      std::cout << "VRStorm: Inter-pupillary distance changed from " << ipd * 1000.0f << "mm to " << new_ipd * 1000.0f << "mm" << std::endl;
+      if(ipd == 0.0f) {
+        std::cout << "VRStorm: Inter-pupillary distance set to " << new_ipd * 1000.0f << "mm" << std::endl;
+      } else {
+        std::cout << "VRStorm: Inter-pupillary distance changed from " << ipd * 1000.0f << "mm to " << new_ipd * 1000.0f << "mm" << std::endl;
+      }
       ipd = new_ipd;
       eye_to_head_transform[static_cast<unsigned int>(vr::EVREye::Eye_Left )] = matrix4f::from_row_major_34_array(*hmd_handle->GetEyeToHeadTransform(vr::EVREye::Eye_Left ).m).inverse();
       eye_to_head_transform[static_cast<unsigned int>(vr::EVREye::Eye_Right)] = matrix4f::from_row_major_34_array(*hmd_handle->GetEyeToHeadTransform(vr::EVREye::Eye_Right).m).inverse();
@@ -538,18 +545,24 @@ void manager::update() {
 
     vr::VREvent_t event;
     while(hmd_handle->PollNextEvent(&event, sizeof(event))) {                   // poll for any new events in the queue
-      #ifdef DEBUG_VRSTORM
+      #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
         std::cout << "VRStorm: DEBUG: polled an event: " << hmd_handle->GetEventTypeNameFromEnum(static_cast<vr::EVREventType>(event.eventType)) << " on device " << static_cast<int64_t>(event.trackedDeviceIndex) << std::endl;
-      #endif // DEBUG_VRSTORM
+      #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
       switch(event.eventType) {
       case vr::VREvent_None:
         break;
       case vr::VREvent_TrackedDeviceActivated:                                  // when a new device is activated / connected
+        #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+          std::cout << "VRStorm: DEBUG: controller id " << event.trackedDeviceIndex << " has been activated." << std::endl;
+        #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
         // TODO: update the tracked device listings
         input_controller.update_hands();
         input_controller.update_names();
         break;
       case vr::VREvent_TrackedDeviceDeactivated:                                // when a device is deactivated / disconnected
+        #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+          std::cout << "VRStorm: DEBUG: controller id " << event.trackedDeviceIndex << " has been deactivated." << std::endl;
+        #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
         // TODO: update the tracked device listings
         input_controller.update_hands();
         input_controller.update_names();
@@ -574,15 +587,23 @@ void manager::update() {
           unsigned int const button = event.data.controller.button;
           switch(hmd_handle->GetControllerRoleForTrackedDeviceIndex(event.trackedDeviceIndex)) {
           case vr::TrackedControllerRole_LeftHand:
-            #ifdef DEBUG_VRSTORM
+            #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
               std::cout << "VRStorm: DEBUG: button " << button << " press on left controller begin" << std::endl;
-            #endif // DEBUG_VRSTORM
+            #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+            if(input_controller.get_id(input::controller::hand_type::LEFT) != event.trackedDeviceIndex) {
+              // the handedness of this report does not agree with our cached controller roles - need to recache them
+              input_controller.update_hands();
+            }
             input_controller.execute_button(input::controller::hand_type::LEFT, button, input::controller::actiontype::PRESS);
             break;
           case vr::TrackedControllerRole_RightHand:
-            #ifdef DEBUG_VRSTORM
+            #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
               std::cout << "VRStorm: DEBUG: button " << button << " press on right controller begin" << std::endl;
-            #endif // DEBUG_VRSTORM
+            #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+            if(input_controller.get_id(input::controller::hand_type::RIGHT) != event.trackedDeviceIndex) {
+              // the handedness of this report does not agree with our cached controller roles - need to recache them
+              input_controller.update_hands();
+            }
             input_controller.execute_button(input::controller::hand_type::RIGHT, button, input::controller::actiontype::PRESS);
             break;
           default:
@@ -596,15 +617,15 @@ void manager::update() {
           unsigned int const button = event.data.controller.button;
           switch(hmd_handle->GetControllerRoleForTrackedDeviceIndex(event.trackedDeviceIndex)) {
           case vr::TrackedControllerRole_LeftHand:
-            #ifdef DEBUG_VRSTORM
+            #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
               std::cout << "VRStorm: DEBUG: button " << button << " press on left controller end" << std::endl;
-            #endif // DEBUG_VRSTORM
+            #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
             input_controller.execute_button(input::controller::hand_type::LEFT, button, input::controller::actiontype::RELEASE);
             break;
           case vr::TrackedControllerRole_RightHand:
-            #ifdef DEBUG_VRSTORM
+            #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
               std::cout << "VRStorm: DEBUG: button " << button << " press on right controller end" << std::endl;
-            #endif // DEBUG_VRSTORM
+            #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
             input_controller.execute_button(input::controller::hand_type::RIGHT, button, input::controller::actiontype::RELEASE);
             break;
           default:
@@ -618,15 +639,15 @@ void manager::update() {
           unsigned int const button = event.data.controller.button;
           switch(hmd_handle->GetControllerRoleForTrackedDeviceIndex(event.trackedDeviceIndex)) {
           case vr::TrackedControllerRole_LeftHand:
-            #ifdef DEBUG_VRSTORM
+            #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
               std::cout << "VRStorm: DEBUG: button " << button << " touch on left controller begin" << std::endl;
-            #endif // DEBUG_VRSTORM
+            #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
             input_controller.execute_button(input::controller::hand_type::LEFT, button, input::controller::actiontype::TOUCH);
             break;
           case vr::TrackedControllerRole_RightHand:
-            #ifdef DEBUG_VRSTORM
+            #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
               std::cout << "VRStorm: DEBUG: button " << button << " touch on right controller begin" << std::endl;
-            #endif // DEBUG_VRSTORM
+            #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
             input_controller.execute_button(input::controller::hand_type::RIGHT, button, input::controller::actiontype::TOUCH);
             break;
           default:
@@ -640,15 +661,15 @@ void manager::update() {
           unsigned int const button = event.data.controller.button;
           switch(hmd_handle->GetControllerRoleForTrackedDeviceIndex(event.trackedDeviceIndex)) {
           case vr::TrackedControllerRole_LeftHand:
-            #ifdef DEBUG_VRSTORM
+            #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
               std::cout << "VRStorm: DEBUG: button " << button << " touch on left controller end" << std::endl;
-            #endif // DEBUG_VRSTORM
+            #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
             input_controller.execute_button(input::controller::hand_type::LEFT, button, input::controller::actiontype::UNTOUCH);
             break;
           case vr::TrackedControllerRole_RightHand:
-            #ifdef DEBUG_VRSTORM
+            #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
               std::cout << "VRStorm: DEBUG: button " << button << " touch on right controller end" << std::endl;
-            #endif // DEBUG_VRSTORM
+            #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
             input_controller.execute_button(input::controller::hand_type::RIGHT, button, input::controller::actiontype::UNTOUCH);
             break;
           default:
@@ -825,13 +846,13 @@ void manager::update() {
       default:
         if(event.eventType >= vr::VREvent_VendorSpecific_Reserved_Start &&
            event.eventType <= vr::VREvent_VendorSpecific_Reserved_End) {
-          #ifdef DEBUG_VRSTORM
+          #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
             std::cout << "VRStorm: Received a vendor specific event on device " << event.trackedDeviceIndex << ", type " << event.eventType << std::endl;
-          #endif // DEBUG_VRSTORM
+          #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
         } else {
-          //#ifdef DEBUG_VRSTORM
+          //#if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
             std::cout << "VRStorm: Received an unknown event on device " << event.trackedDeviceIndex << ", type " << event.eventType << std::endl;
-          //#endif // DEBUG_VRSTORM
+          //#endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
         }
         break;
       }

@@ -87,6 +87,8 @@ public:
           break;
         case bindtype::ANY_ALL:
           return true;
+        default:
+          return false;
         }
       #else
         if(type == bindtype::ANY_ALL || rhs.type == bindtype::ANY_ALL) {
@@ -107,9 +109,9 @@ public:
   };
 
   // limits
-  static unsigned int constexpr const max = 2;                                  // we have a left and a right controller
+  static unsigned int constexpr const max = static_cast<unsigned int>(hand_type::RIGHT) + 1;
   static unsigned int constexpr const max_axis = vr::k_unControllerStateAxisCount;
-  static unsigned int constexpr const max_axis_direction = 2;                   // each axis has 2 directions, x and y
+  static unsigned int constexpr const max_axis_direction = static_cast<unsigned int>(axis_direction_type::Y) + 1;
   static unsigned int constexpr const max_button = vr::k_EButton_Max;
 
 private:

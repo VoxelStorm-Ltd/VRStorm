@@ -15,22 +15,31 @@ controller::~controller() {
 void controller::init() {
   /// Assign a safe default function to all controller arrays
   for(unsigned int hand_id = 0; hand_id != max; ++hand_id) {
+    hand_type const hand = static_cast<hand_type>(hand_id);
     for(unsigned int axis = 0; axis != max_axis; ++axis) {
       for(unsigned int axis_direction_id = 0; axis_direction_id != max_axis_direction; ++axis_direction_id) {
-        #ifdef DEBUG_INPUTSTORM
-          std::stringstream ss;
-          ss << "VRStorm: DEBUG: unbound controller function called on axis " << axis;
-          if(hand_id != 0) {
-            ss << " on controller hand " << hand_id;
+        #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+          /*
+          if(parent.hmd_handle->GetInt32TrackedDeviceProperty(get_id(hand), static_cast<vr::ETrackedDeviceProperty>(vr::Prop_Axis0Type_Int32 + axis)) == vr::k_eControllerAxis_None) {
+          */
+        #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+            bind_axis(hand, axis, static_cast<axis_direction_type>(axis_direction_id), [](float value __attribute__((__unused__))){}); // default to noop
+            axis_bindings[hand_id][axis][axis_direction_id].enabled = false;
+        #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+          /*
+          } else {
+            std::stringstream ss;
+            ss << "VRStorm: DEBUG: unbound controller function called on axis " << axis << " direction " << axis_direction_id;
+            if(hand != hand_type::UNKNOWN) {
+              ss << " on controller hand " << hand_id;
+            }
+            ss << " value ";
+            bind_axis(hand, axis, static_cast<axis_direction_type>(axis_direction_id), [s = ss.str()](float value){
+              std::cout << s << std::fixed << value << std::endl;
+            });
           }
-          ss << " value ";
-          bind_axis(static_cast<hand_type>(hand_id), axis, static_cast<axis_direction_type>(axis_direction_id), [s = ss.str()](float value){
-            std::cout << s << std::fixed << value <<  std::endl;
-          });
-        #else
-          bind_axis(static_cast<hand_type>(hand_id), axis, static_cast<axis_direction_type>(axis_direction_id), [](float value __attribute__((__unused__))){}); // default to noop
-          axis_bindings[hand_id][axis][axis_direction_id].enabled = false;
-        #endif // DEBUG_INPUTSTORM
+          */
+        #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
       }
     }
   }
@@ -38,7 +47,7 @@ void controller::init() {
   for(actiontype action : actiontype()) {
     for(unsigned int hand_id = 0; hand_id != max; ++hand_id) {
       for(unsigned int button = 0; button != max_button; ++button) {
-        #ifdef DEBUG_INPUTSTORM
+        #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
           std::stringstream ss;
           ss << "VRStorm: DEBUG: unbound controller function called on button " << button;
           if(hand_id != 0) {
@@ -54,7 +63,7 @@ void controller::init() {
           }
         #else
           bind_button(static_cast<hand_type>(hand_id), button, action, []{});   // default to noop
-        #endif // DEBUG_INPUTSTORM
+        #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
       }
     }
   }
@@ -166,8 +175,8 @@ std::string controller::get_name_axis(hand_type hand, unsigned int axis) const {
   /// Return the name of a controller axis
   #ifndef NDEBUG
     // boundary safety check
-    if(axis >= vr::Prop_Axis4Type_Int32 - vr::Prop_Axis0Type_Int32) {
-      std::cout << "VRStorm: ERROR: attempting to address controller axis number " << axis << " when max is " << vr::Prop_Axis4Type_Int32 - vr::Prop_Axis0Type_Int32 - 1 << std::endl;
+    if(axis > vr::Prop_Axis4Type_Int32 - vr::Prop_Axis0Type_Int32) {
+      std::cout << "VRStorm: ERROR: get_name_axis attempting to address controller axis number " << axis << " when max is " << vr::Prop_Axis4Type_Int32 - vr::Prop_Axis0Type_Int32 << std::endl;
       return "UNKNOWN";
     }
   #endif // NDEBUG
@@ -176,8 +185,8 @@ std::string controller::get_name_axis(hand_type hand, unsigned int axis) const {
   unsigned int const controller_id = get_id(hand);
   switch(parent.hmd_handle->GetInt32TrackedDeviceProperty(controller_id, static_cast<vr::ETrackedDeviceProperty>(vr::Prop_Axis0Type_Int32 + axis))) {
   case vr::k_eControllerAxis_None:
-    std::cout << "VRStorm: WARNING: OpenVR claims axis " << axis << " on controller " << controller_id << " is of type \"none\"" << std::endl;
-    ss << "UNKNOWN(NONE)";
+    //std::cout << "VRStorm: WARNING: OpenVR claims axis " << axis << " on controller " << controller_id << " is of type \"none\"" << std::endl;
+    ss << "NONE";
     break;
   case vr::k_eControllerAxis_TrackPad:
     ss << "TRACKPAD";
@@ -360,8 +369,30 @@ void controller::unbind_axis(hand_type hand,
                              axis_direction_type axis_direction) {
   /// Unbind a callback on a controlle axis
   auto &this_binding = axis_bindings[static_cast<unsigned int>(hand)][axis][static_cast<unsigned int>(axis_direction)];
-  this_binding.func = [](float value __attribute__((unused))){};                // noop
-  this_binding.enabled = false;
+  #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+    // in debug mode, we don't really unbind anything, we replace it with a reporting function
+    /*
+    if(parent.hmd_handle->GetInt32TrackedDeviceProperty(get_id(hand), static_cast<vr::ETrackedDeviceProperty>(vr::Prop_Axis0Type_Int32 + axis)) == vr::k_eControllerAxis_None) {
+    */
+  #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+      this_binding.func = [](float value __attribute__((unused))){};            // noop
+      this_binding.enabled = false;
+  #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+    /*
+    } else {
+      std::stringstream ss;
+      ss << "VRStorm: DEBUG: unbound controller function called on axis " << axis;
+      if(hand != hand_type::UNKNOWN) {
+        ss << " on controller " << get_name(hand) << " hand " << static_cast<unsigned int>(hand);
+      }
+      ss << " value ";
+      this_binding.func = [s = ss.str()](float value){
+        std::cout << s << std::fixed << value << std::endl;
+      };
+      this_binding.enabled = true;
+    }
+    */
+  #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
 }
 void controller::unbind_axis_any(hand_type hand) {
   /// Helper function to unbind all axes on a controlle
@@ -425,6 +456,14 @@ void controller::execute_axis(hand_type hand,
   if(!this_binding.enabled) {
     return;                                                                     // early exit in case this binding isn't in use
   }
+  #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+    /*
+    std::cout << "VRStorm: DEBUG: executing controller hand " << get_name(hand)
+              << " axis " << get_name_axis(hand, axis) << "(" << axis << ")"
+              << " direction " << static_cast<unsigned int>(axis_direction)
+              << " value " << value << std::endl;
+    */
+  #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
   this_binding.execute(value);
 }
 void controller::execute_axis(hand_type hand,
@@ -436,10 +475,14 @@ void controller::execute_axis(hand_type hand,
 }
 void controller::execute_button(hand_type hand, unsigned int button, actiontype action) {
   /// Call the function associated with a controlle button
+  #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+    std::cout << "VRStorm: DEBUG: executing controller hand " << get_name(hand)
+              << " button " << get_name_button(button) << "(" << button << ")"
+              << " action " << get_actiontype_name(action) << std::endl;
+  #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
   button_binding_at(hand, button, action)();
 }
 
-// TODO:
 void controller::capture_axis(std::function<void(hand_type,
                                                  unsigned int,
                                                  axis_direction_type,
@@ -460,12 +503,12 @@ void controller::capture_axis(std::function<void(hand_type,
       for(unsigned int axis = 0; axis != max_axis; ++axis) {
         initial_values[hand_id][axis][static_cast<unsigned int>(axis_direction_type::X)] = controller_state.rAxis[axis].x;
         initial_values[hand_id][axis][static_cast<unsigned int>(axis_direction_type::Y)] = controller_state.rAxis[axis].y;
-        #ifdef DEBUG_VRSTORM
+        #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
           std::cout << "VRStorm: DEBUG: Calibrated controller hand " << hand_id
                     << " axis " << axis
                     << ": " << initial_values[hand_id][axis][static_cast<unsigned int>(axis_direction_type::X)]
                     << ", " << initial_values[hand_id][axis][static_cast<unsigned int>(axis_direction_type::Y)] << std::endl;
-        #endif // DEBUG_VRSTORM
+        #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
       }
     }
     calibrated = true;
@@ -482,19 +525,19 @@ void controller::capture_axis(std::function<void(hand_type,
     }
     for(unsigned int axis = 0; axis != max_axis; ++axis) {
       for(unsigned int axis_direction_id = 0; axis_direction_id != max_axis_direction; ++axis_direction_id) {
-        #ifdef DEBUG_VRSTORM
+        #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
           std::stringstream ss;
           ss << "VRStorm: DEBUG: controller hand " << hand_id << " axis " << axis << ": ";
-        #endif // DEBUG_VRSTORM
+        #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
         float const initial_value = initial_values[hand_id][axis][axis_direction_id];
         auto const axis_direction = static_cast<axis_direction_type>(axis_direction_id);
         bind_axis(hand,
                   axis,
                   axis_direction,
                   [callback,
-                   #ifdef DEBUG_VRSTORM
+                   #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
                      s = ss.str(),
-                   #endif // DEBUG_VRSTORM
+                   #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
                    hand,
                    axis,
                    axis_direction,
@@ -502,14 +545,14 @@ void controller::capture_axis(std::function<void(hand_type,
                   ](float value){
           float const offset = value - initial_value;
           if(offset > deadzone) {
-            #ifdef DEBUG_VRSTORM
+            #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
               std::cout << s << std::fixed << value << "(offset: pos " << offset << ")" <<  std::endl;
-            #endif // DEBUG_VRSTORM
+            #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
             callback(hand, axis, axis_direction, false);
           } else if(offset < -deadzone) {
-            #ifdef DEBUG_VRSTORM
+            #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
               std::cout << s << std::fixed << value << "(offset: neg " << offset << ")" <<  std::endl;
-            #endif // DEBUG_VRSTORM
+            #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
             callback(hand, axis, axis_direction, true);
           }
         });
@@ -534,12 +577,12 @@ void controller::capture_axis(std::function<void(binding_axis const&)> callback,
       for(unsigned int axis = 0; axis != max_axis; ++axis) {
         initial_values[hand_id][axis][static_cast<unsigned int>(axis_direction_type::X)] = controller_state.rAxis[axis].x;
         initial_values[hand_id][axis][static_cast<unsigned int>(axis_direction_type::Y)] = controller_state.rAxis[axis].y;
-        #ifdef DEBUG_VRSTORM
+        #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
           std::cout << "VRStorm: DEBUG: Calibrated controller hand " << hand_id
                     << " axis " << axis
                     << ": " << initial_values[hand_id][axis][static_cast<unsigned int>(axis_direction_type::X)]
                     << ", " << initial_values[hand_id][axis][static_cast<unsigned int>(axis_direction_type::Y)] << std::endl;
-        #endif // DEBUG_VRSTORM
+        #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
       }
     }
     calibrated = true;
@@ -556,19 +599,19 @@ void controller::capture_axis(std::function<void(binding_axis const&)> callback,
     }
     for(unsigned int axis = 0; axis != max_axis; ++axis) {
       for(unsigned int axis_direction_id = 0; axis_direction_id != max_axis_direction; ++axis_direction_id) {
-        #ifdef DEBUG_VRSTORM
+        #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
           std::stringstream ss;
           ss << "VRStorm: DEBUG: controller hand " << hand_id << " axis " << axis << ": ";
-        #endif // DEBUG_VRSTORM
+        #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
         float const initial_value = initial_values[hand_id][axis][axis_direction_id];
         auto const axis_direction = static_cast<axis_direction_type>(axis_direction_id);
         bind_axis(hand,
                   axis,
                   axis_direction,
                   [callback,
-                   #ifdef DEBUG_VRSTORM
+                   #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
                      s = ss.str(),
-                   #endif // DEBUG_VRSTORM
+                   #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
                    hand,
                    axis,
                    axis_direction,
@@ -576,14 +619,14 @@ void controller::capture_axis(std::function<void(binding_axis const&)> callback,
                   ](float value){
           float const offset = value - initial_value;
           if(offset > deadzone) {
-            #ifdef DEBUG_VRSTORM
+            #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
               std::cout << s << std::fixed << value << "(offset: pos " << offset << ")" <<  std::endl;
-            #endif // DEBUG_VRSTORM
+            #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
             callback(binding_axis{hand, axis, axis_direction, false, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f});
           } else if(offset < -deadzone) {
-            #ifdef DEBUG_VRSTORM
+            #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
               std::cout << s << std::fixed << value << "(offset: neg " << offset << ")" <<  std::endl;
-            #endif // DEBUG_VRSTORM
+            #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
             callback(binding_axis{hand, axis, axis_direction, true, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f});
           }
         });
@@ -612,8 +655,8 @@ void controller::capture_button(std::function<void(binding_button const&)> callb
     for(unsigned int button = 0; button != max_button; ++button) {
       bind_button(hand, button, actiontype::RELEASE, []{});                     // unbind release actions
       bind_button(hand, button, actiontype::PRESS, [callback,
-                                                           hand,
-                                                           button]{             // bind on the press action
+                                                    hand,
+                                                    button]{                    // bind on the press action
         callback(binding_button{hand, binding_button::bindtype::SPECIFIC, button});
       });
     }
@@ -624,6 +667,8 @@ void controller::update_hands() {
   /// Update the controller ids for the left and right hand
   bool found_left  = false;
   bool found_right = false;
+  unsigned int fallback_left  = 0;                                              // defaults for hands if we can't find both
+  unsigned int fallback_right = 0;
   unsigned int id = 0;                                                          // reused for future loops
   for(; id != vr::k_unMaxTrackedDeviceCount; ++id) {
     if(parent.hmd_handle->GetTrackedDeviceClass(id) != vr::TrackedDeviceClass_Controller) {
@@ -631,101 +676,159 @@ void controller::update_hands() {
     }
     switch(parent.hmd_handle->GetControllerRoleForTrackedDeviceIndex(id)) {
     case vr::TrackedControllerRole_LeftHand:
-      #ifdef DEBUG_VRSTORM
+      #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
         std::cout << "VRStorm: DEBUG: controller id " << id << " is now the left hand (first)." << std::endl;
-      #endif // DEBUG_VRSTORM
+      #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
       controller_ids[static_cast<unsigned int>(hand_type::LEFT)] = id;
       enabled[       static_cast<unsigned int>(hand_type::LEFT)] = true;
       found_left = true;
       break;
     case vr::TrackedControllerRole_RightHand:
-      #ifdef DEBUG_VRSTORM
+      #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
         std::cout << "VRStorm: DEBUG: controller id " << id << " is now the right hand (first)." << std::endl;
-      #endif // DEBUG_VRSTORM
+      #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
       controller_ids[static_cast<unsigned int>(hand_type::RIGHT)] = id;
       enabled[       static_cast<unsigned int>(hand_type::RIGHT)] = true;
       found_right = true;
       break;
     default:
+      if(fallback_right == 0) {                                                 // assign fallback values, right hand first priority
+        fallback_right = id;
+      } else if(fallback_left == 0) {
+        fallback_left = id;
+      }
       break;
     }
   }
   // this is an optimisation to reduce the number of comparisons and avoid searching further than we have to
   if(found_left) {
+    if(found_right) {
+      return;
+    }
     for(; id != vr::k_unMaxTrackedDeviceCount; ++id) {                          // resume the loop
       if(parent.hmd_handle->GetTrackedDeviceClass(id) != vr::TrackedDeviceClass_Controller) {
         continue;                                                               // skip non-controllers
       }
       if(parent.hmd_handle->GetControllerRoleForTrackedDeviceIndex(id) == vr::TrackedControllerRole_RightHand) {
-        #ifdef DEBUG_VRSTORM
+        #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
           std::cout << "VRStorm: DEBUG: controller id " << id << " is now the right hand (second)." << std::endl;
-        #endif // DEBUG_VRSTORM
+        #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
         controller_ids[static_cast<unsigned int>(hand_type::RIGHT)] = id;
         enabled[       static_cast<unsigned int>(hand_type::RIGHT)] = true;
         return;
       }
+      if(fallback_right == 0) {                                                 // assign fallback values, we've already found the left
+        fallback_right = id;
+      }
     }
-    #ifdef DEBUG_VRSTORM
-      std::cout << "VRStorm: DEBUG: could not find a controller for the right hand." << std::endl;
-    #endif // DEBUG_VRSTORM
-    controller_ids[static_cast<unsigned int>(hand_type::RIGHT)] = 0;
-    enabled[       static_cast<unsigned int>(hand_type::RIGHT)] = false;
+    controller_ids[static_cast<unsigned int>(hand_type::RIGHT)] = fallback_right;
+    if(fallback_right == 0) {
+      #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+        std::cout << "VRStorm: DEBUG: could not find a controller for the right hand." << std::endl;
+      #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+      enabled[static_cast<unsigned int>(hand_type::RIGHT)] = false;
+    } else {
+      #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+        std::cout << "VRStorm: DEBUG: could not find a controller for the right hand, guessing it's id " << fallback_right << "." << std::endl;
+      #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+      enabled[static_cast<unsigned int>(hand_type::RIGHT)] = true;
+    }
   } else if(found_right) {
     for(; id != vr::k_unMaxTrackedDeviceCount; ++id) {                          // resume the loop
       if(parent.hmd_handle->GetTrackedDeviceClass(id) != vr::TrackedDeviceClass_Controller) {
         continue;                                                               // skip non-controllers
       }
       if(parent.hmd_handle->GetControllerRoleForTrackedDeviceIndex(id) == vr::TrackedControllerRole_LeftHand) {
-        #ifdef DEBUG_VRSTORM
+        #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
           std::cout << "VRStorm: DEBUG: controller id " << id << " is now the left hand (second)." << std::endl;
-        #endif // DEBUG_VRSTORM
+        #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
         controller_ids[static_cast<unsigned int>(hand_type::LEFT)] = id;
         enabled[       static_cast<unsigned int>(hand_type::LEFT)] = true;
         return;
       }
+      if(fallback_left == 0) {                                                  // assign fallback values, we've already found the right
+        fallback_left = id;
+      }
     }
-    #ifdef DEBUG_VRSTORM
-      std::cout << "VRStorm: DEBUG: could not find a controller for the left hand." << std::endl;
-    #endif // DEBUG_VRSTORM
-    controller_ids[static_cast<unsigned int>(hand_type::LEFT)] = 0;
-    enabled[       static_cast<unsigned int>(hand_type::LEFT)] = false;
+    controller_ids[static_cast<unsigned int>(hand_type::LEFT)] = fallback_left;
+    if(fallback_left == 0) {
+      #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+        std::cout << "VRStorm: DEBUG: could not find a controller for the right hand." << std::endl;
+      #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+      enabled[static_cast<unsigned int>(hand_type::LEFT)] = false;
+    } else {
+      #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+        std::cout << "VRStorm: DEBUG: could not find a controller for the left hand, guessing it's id " << fallback_right << "." << std::endl;
+      #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+      enabled[static_cast<unsigned int>(hand_type::LEFT)] = true;
+    }
   } else {
-    #ifdef DEBUG_VRSTORM
-      std::cout << "VRStorm: DEBUG: could not find any controllers for either hand." << std::endl;
-    #endif // DEBUG_VRSTORM
-    controller_ids[static_cast<unsigned int>(hand_type::LEFT )] = 0;
-    controller_ids[static_cast<unsigned int>(hand_type::RIGHT)] = 0;
-    enabled[       static_cast<unsigned int>(hand_type::LEFT )] = false;
-    enabled[       static_cast<unsigned int>(hand_type::RIGHT)] = false;
+    controller_ids[static_cast<unsigned int>(hand_type::LEFT )] = fallback_left;
+    controller_ids[static_cast<unsigned int>(hand_type::RIGHT)] = fallback_right;
+    #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+      std::cout << "VRStorm: DEBUG: could not find any controllers for either hand";
+    #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+    if(fallback_left == 0) {
+      enabled[static_cast<unsigned int>(hand_type::LEFT)] = false;
+    } else {
+      #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+        std::cout << ", guessing left is id " << fallback_left;
+      #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+      enabled[static_cast<unsigned int>(hand_type::LEFT)] = true;
+    }
+    if(fallback_right == 0) {
+      enabled[static_cast<unsigned int>(hand_type::RIGHT)] = false;
+    } else {
+      #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+        std::cout << ", guessing right is id " << fallback_right;
+      #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+      enabled[static_cast<unsigned int>(hand_type::RIGHT)] = true;
+    }
+    #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+      std::cout << "." << std::endl;
+    #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
     return;
   }
 }
 
 void controller::update_names() {
   /// Update the list of controller names
-  names[static_cast<unsigned int>(hand_type::LEFT )] = parent.get_tracked_device_string(get_id(hand_type::LEFT),  vr::Prop_ModelNumber_String);
-  names[static_cast<unsigned int>(hand_type::RIGHT)] = parent.get_tracked_device_string(get_id(hand_type::RIGHT), vr::Prop_ModelNumber_String);
-  #ifdef DEBUG_VRSTORM
+  names[static_cast<unsigned int>(hand_type::LEFT )] = parent.get_tracked_device_string(get_id(hand_type::LEFT),  vr::Prop_ModelNumber_String) + " (left)";
+  names[static_cast<unsigned int>(hand_type::RIGHT)] = parent.get_tracked_device_string(get_id(hand_type::RIGHT), vr::Prop_ModelNumber_String) + " (right)";
+  #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
     std::cout << "VRStorm: DEBUG: controller: left is  \"" << get_name(hand_type::LEFT) << "\"" << std::endl;
     std::cout << "VRStorm: DEBUG: controller: right is \"" << get_name(hand_type::RIGHT) << "\"" << std::endl;
-  #endif // DEBUG_VRSTORM
+  #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
 }
 
 void controller::poll() {
   /// Poll and update the analogue controller axes for the known hands
-  for(hand_type hand = hand_type::LEFT; hand != hand_type::RIGHT; hand = hand_type::RIGHT) { // two-step loop
+  for(auto const hand : std::initializer_list<hand_type>{hand_type::LEFT, hand_type::RIGHT}) { // iterate through the list of acceptable hands
     if(get_enabled(hand)) {
       vr::VRControllerState_t controller_state;
       unsigned int controller_id = get_id(hand);
       parent.hmd_handle->GetControllerState(controller_id, &controller_state);
-      #ifdef DEBUG_VRSTORM
-        std::cout << "VRStorm: DEBUG: controller id " << controller_id << " unPacketNum " << controller_state.unPacketNum << " ulButtonPressed " << controller_state.ulButtonPressed << " ulButtonTouched " << controller_state.ulButtonTouched << std::endl;
-      #endif // DEBUG_VRSTORM
-      for(unsigned int axis = 0; axis != vr::k_unControllerStateAxisCount; ++axis) {
-        #ifdef DEBUG_VRSTORM
-          std::cout << "VRStorm: DEBUG: axis " << axis << " value " << controller_state.rAxis[axis].x << ", " << controller_state.rAxis[axis].y << std::endl;
-        #endif // DEBUG_VRSTORM
+      #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+        /*
+        std::cout << "VRStorm: DEBUG: controller id " << controller_id
+                  << " hand " << get_name(hand)
+                  << " unPacketNum " << controller_state.unPacketNum
+                  << " ulButtonPressed " << controller_state.ulButtonPressed
+                  << " ulButtonTouched " << controller_state.ulButtonTouched << std::endl;
+        */
+      #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+      for(unsigned int axis = 0; axis != max_axis; ++axis) {
+        #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+          /*
+          if(controller_state.rAxis[axis].x != 0.0f && controller_state.rAxis[axis].y != 0.0f) {
+            std::cout << "VRStorm: DEBUG: axis " << axis
+                      << " value " << controller_state.rAxis[axis].x
+                      << ", " << controller_state.rAxis[axis].y << std::endl;
+          }
+          */
+        #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
         execute_axis(hand, axis, {controller_state.rAxis[axis].x, controller_state.rAxis[axis].y});
+        // TODO: maintain a list of axes that are present for the present controller, and only poll those.  Update them when the controller changes
       }
     }
   }
@@ -737,34 +840,59 @@ void controller::poll(unsigned int controller_id) {
   switch(parent.hmd_handle->GetControllerRoleForTrackedDeviceIndex(controller_id)) {
   case vr::TrackedControllerRole_LeftHand:
     if(get_enabled(hand_type::LEFT)) {
-      #ifdef DEBUG_VRSTORM
-        std::cout << "VRStorm: DEBUG: controller id " << controller_id << " unPacketNum " << controller_state.unPacketNum << " ulButtonPressed " << controller_state.ulButtonPressed << " ulButtonTouched " << controller_state.ulButtonTouched << std::endl;
-      #endif // DEBUG_VRSTORM
+      #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+        /*
+        std::cout << "VRStorm: DEBUG: controller left id " << controller_id
+                  << " hand " << get_name(hand_type::LEFT)
+                  << " unPacketNum " << controller_state.unPacketNum
+                  << " ulButtonPressed " << controller_state.ulButtonPressed
+                  << " ulButtonTouched " << controller_state.ulButtonTouched << std::endl;
+        */
+      #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
       controller_ids[static_cast<unsigned int>(input::controller::hand_type::LEFT)] = controller_id; // opportunity to update the controller ids here for free
-      for(unsigned int axis = 0; axis != vr::k_unControllerStateAxisCount; ++axis) {
-        #ifdef DEBUG_VRSTORM
-          std::cout << "VRStorm: DEBUG: axis " << axis << " value " << controller_state.rAxis[axis].x << ", " << controller_state.rAxis[axis].y << std::endl;
-        #endif // DEBUG_VRSTORM
+      for(unsigned int axis = 0; axis != max_axis; ++axis) {
+        #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+          /*
+          if(controller_state.rAxis[axis].x != 0.0f && controller_state.rAxis[axis].y != 0.0f) {
+            std::cout << "VRStorm: DEBUG: axis " << axis
+                      << " value " << controller_state.rAxis[axis].x
+                      << ", " << controller_state.rAxis[axis].y << std::endl;
+          }
+          */
+        #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
         execute_axis(input::controller::hand_type::LEFT, axis, {controller_state.rAxis[axis].x, controller_state.rAxis[axis].y});
       }
     }
     break;
   case vr::TrackedControllerRole_RightHand:
     if(get_enabled(hand_type::LEFT)) {
-      #ifdef DEBUG_VRSTORM
-        std::cout << "VRStorm: DEBUG: controller id " << controller_id << " unPacketNum " << controller_state.unPacketNum << " ulButtonPressed " << controller_state.ulButtonPressed << " ulButtonTouched " << controller_state.ulButtonTouched << std::endl;
-      #endif // DEBUG_VRSTORM
+      #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+        /*
+        std::cout << "VRStorm: DEBUG: controller right id " << controller_id
+                  << " hand " << get_name(hand_type::LEFT)
+                  << " unPacketNum " << controller_state.unPacketNum
+                  << " ulButtonPressed " << controller_state.ulButtonPressed
+                  << " ulButtonTouched " << controller_state.ulButtonTouched << std::endl;
+        */
+      #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
       controller_ids[static_cast<unsigned int>(input::controller::hand_type::RIGHT)] = controller_id; // opportunity to update the controller ids here for free
-      for(unsigned int axis = 0; axis != vr::k_unControllerStateAxisCount; ++axis) {
-        #ifdef DEBUG_VRSTORM
-          std::cout << "VRStorm: DEBUG: axis " << axis << " value " << controller_state.rAxis[axis].x << ", " << controller_state.rAxis[axis].y << std::endl;
-        #endif // DEBUG_VRSTORM
+      for(unsigned int axis = 0; axis != max_axis; ++axis) {
+        #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+          /*
+          if(controller_state.rAxis[axis].x != 0.0f && controller_state.rAxis[axis].y != 0.0f) {
+            std::cout << "VRStorm: DEBUG: axis " << axis
+                      << " value " << controller_state.rAxis[axis].x
+                      << ", " << controller_state.rAxis[axis].y << std::endl;
+          }
+          */
+        #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
         execute_axis(input::controller::hand_type::RIGHT, axis, {controller_state.rAxis[axis].x, controller_state.rAxis[axis].y});
       }
     }
     break;
   default:
-    std::cout << "VRStorm: WARNING: axis failed to poll on unknown hand " << static_cast<int>(parent.hmd_handle->GetControllerRoleForTrackedDeviceIndex(controller_id)) << " for controller id " << controller_id << std::endl;
+    std::cout << "VRStorm: WARNING: axis failed to poll on unknown hand " << static_cast<int>(parent.hmd_handle->GetControllerRoleForTrackedDeviceIndex(controller_id))
+              << " for controller id " << controller_id << std::endl;
     break;
   }
 }
@@ -777,7 +905,9 @@ void controller::draw_binding_graphs() const {
         if(!this_binding.enabled) {
           continue;
         }
-        std::cout << "VRStorm: Transform function on controller hand " << hand_id << " axis " << axis << " direction " << direction_id << ":" << std::endl;
+        std::cout << "VRStorm: Transform function on controller " << get_name(static_cast<hand_type>(hand_id))
+                  << " axis " << axis
+                  << " direction " << direction_id << ":" << std::endl;
         this_binding.draw_graph_console();
       }
     }

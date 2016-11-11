@@ -1,12 +1,12 @@
 #ifndef VRSTORM_BINDING_SETS_CONTROLLER_BUTTON_H_INCLUDED
 #define VRSTORM_BINDING_SETS_CONTROLLER_BUTTON_H_INCLUDED
 
+#include <boost/bimap.hpp>
+#include <boost/bimap/unordered_multiset_of.hpp>
 #include "inputstorm/binding_sets/base.h"
 #include "vrstorm/input/controller.h"
 
 namespace vrstorm {
-template<typename T> class binding_manager;
-
 namespace binding_sets {
 
 #define BINDING_SET_TYPE boost::bimap<boost::bimaps::unordered_multiset_of<T>, boost::bimaps::unordered_multiset_of<input::controller::binding_button>>
@@ -16,8 +16,11 @@ template<typename T>
 class controller_button : public BASE_TYPE {
   using controltype = T;
 
+  vrstorm::input::controller &parent_controller;
+
 public:
-  controller_button(inputstorm::manager &input_manager, binding_manager<controltype> &parent_binding_manager);
+  controller_button(inputstorm::binding_manager<controltype> &parent_binding_manager,
+                    vrstorm::input::controller &this_parent_controller);
   ~controller_button();
 
   // bind and unbind controls to inputs
@@ -26,10 +29,10 @@ public:
 
   void bind(std::string const &binding_name,
             controltype control,
-            unsigned int joystick_id,
+            input::controller::hand_type hand,
             unsigned int button);
   void bind(controltype control,
-            unsigned int joystick_id,
+            input::controller::hand_type hand,
             unsigned int button);
 
   // update control-based bindings
@@ -41,9 +44,10 @@ public:
 };
 
 template<typename T>
-controller_button<T>::controller_button(inputstorm::manager &input_manager,
-                                        binding_manager<controltype> &parent_binding_manager)
-  : BASE_TYPE(input_manager, parent_binding_manager) {
+controller_button<T>::controller_button(inputstorm::binding_manager<controltype> &parent_binding_manager,
+                                        vrstorm::input::controller &this_parent_controller)
+  : BASE_TYPE(parent_binding_manager),
+    parent_controller(this_parent_controller) {
   /// Default constructor
 }
 
@@ -56,8 +60,11 @@ controller_button<T>::~controller_button() {
 
 template<typename T>
 void controller_button<T>::unbind(std::string const &binding_name,
-                                controltype control) {
+                                  controltype control) {
   /// Erase a control binding from an input joystick button relationship
+  #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+    std::cout << "VRStorm: DEBUG: Unbinding controller button for control " << static_cast<unsigned int>(control) << " on set " << binding_name << std::endl;
+  #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
   auto &binding_set(this->binding_sets[binding_name]);
   auto const &binding_range(binding_set.left.equal_range(control));
   auto const binding_range_copy(binding_range);                                 // copy the binding range to update after
@@ -72,25 +79,28 @@ void controller_button<T>::unbind(std::string const &binding_name,
 template<typename T>
 void controller_button<T>::bind(std::string const &binding_name,
                                 controltype control,
-                                unsigned int controller_id,
+                                input::controller::hand_type hand,
                                 unsigned int button) {
   /// Apply a new control binding to an input key relationship
-  #ifdef DEBUG_INPUTSTORM
-    std::cout << "InputStorm: DEBUG: Binding control " << static_cast<int>(control) <<  " in set " << this->binding_selected_name << ", joystick " << joystick_id << " button " << button << std::endl;
-  #endif // DEBUG_INPUTSTORM
+  #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
+    std::cout << "VRStorm: DEBUG: Binding control " << static_cast<int>(control)
+              << " in set " << this->binding_selected_name
+              << ", controller " << parent_controller.get_name(hand)
+              << " button " << button << std::endl;
+  #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
   auto &binding_set(this->binding_sets[binding_name]);
   binding_set.insert(typename BASE_TYPE::binding_set_value_type(control, input::controller::binding_button{
-    controller_id,
+    hand,
     input::controller::binding_button::bindtype::SPECIFIC,
     button
   }));
 }
 template<typename T>
 void controller_button<T>::bind(controltype control,
-                                unsigned int controller_id,
+                                input::controller::hand_type hand,
                                 unsigned int button) {
   /// Wrapper to work on the selected control set
-  bind(this->binding_selected_name, control, controller_id, button);
+  bind(this->binding_selected_name, control, hand, button);
 }
 
 ///////////////////// update control-based bindings ////////////////////////////
@@ -146,6 +156,11 @@ void controller_button<T>::update(std::string const &binding_name,
         }
       };
     }
+  }
+  if(func_press_combined || func_release_combined) {
+    parent_controller.bind_button(binding, func_press_combined, func_release_combined);
+  } else {
+    parent_controller.unbind_button(binding);
   }
 }
 template<typename T>
