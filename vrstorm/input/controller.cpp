@@ -1,6 +1,4 @@
-#include "controller.h"
 #include <iostream>
-#include "vectorstorm/vector/vector2.h"
 #include "vrstorm/manager.h"
 
 namespace vrstorm {
@@ -465,8 +463,8 @@ void controller::capture_axis(std::function<void(hand_type,
         #ifdef DEBUG_VRSTORM
           std::cout << "VRStorm: DEBUG: Calibrated controller hand " << hand_id
                     << " axis " << axis
-                    << ": " << initial_values[joystick_id][axis_direction_type::X]
-                    << ", " << initial_values[joystick_id][axis_direction_type::Y] << std::endl;
+                    << ": " << initial_values[hand_id][axis][static_cast<unsigned int>(axis_direction_type::X)]
+                    << ", " << initial_values[hand_id][axis][static_cast<unsigned int>(axis_direction_type::Y)] << std::endl;
         #endif // DEBUG_VRSTORM
       }
     }
@@ -539,8 +537,8 @@ void controller::capture_axis(std::function<void(binding_axis const&)> callback,
         #ifdef DEBUG_VRSTORM
           std::cout << "VRStorm: DEBUG: Calibrated controller hand " << hand_id
                     << " axis " << axis
-                    << ": " << initial_values[joystick_id][axis_direction_type::X]
-                    << ", " << initial_values[joystick_id][axis_direction_type::Y] << std::endl;
+                    << ": " << initial_values[hand_id][axis][static_cast<unsigned int>(axis_direction_type::X)]
+                    << ", " << initial_values[hand_id][axis][static_cast<unsigned int>(axis_direction_type::Y)] << std::endl;
         #endif // DEBUG_VRSTORM
       }
     }

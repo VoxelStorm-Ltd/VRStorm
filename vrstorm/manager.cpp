@@ -1,11 +1,8 @@
 #include "vrstorm.h"
 #include <iostream>
-#include <memory>
 #include <thread>
-#include "cast_if_required.h"
 #include "dynamic_load.h"
 #include "vectorstorm/vector/vector3.h"
-#include "input/controller.h"
 
 namespace vrstorm {
 
