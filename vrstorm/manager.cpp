@@ -476,6 +476,7 @@ void manager::init() {
       }
 
       // grab the initial poses
+      enabled = true;
       update();
       {
         vector3f const head_position(hmd_position.get_translation());
@@ -486,8 +487,6 @@ void manager::init() {
           std::cout << "VRStorm: Starting head height is " << head_height << "m" << std::endl;
         }
       }
-
-      enabled = true;
       std::cout << "VRStorm: Successfully initialised." << std::endl;
     } catch(std::exception &e) {
       std::cout << "VRStorm: Exception in startup: " << e.what() << std::endl;
@@ -520,6 +519,9 @@ void manager::shutdown() {
 
 void manager::update() {
   #ifndef VRSTORM_DISABLED
+    if(!enabled) {
+      return;
+    }
     std::array<vr::TrackedDevicePose_t, vr::k_unMaxTrackedDeviceCount> tracked_device_poses;
     compositor->WaitGetPoses(tracked_device_poses.data(), vr::k_unMaxTrackedDeviceCount, nullptr, 0);
     if(tracked_device_poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid) {     // update HMD state
