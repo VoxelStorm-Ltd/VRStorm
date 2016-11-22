@@ -468,7 +468,7 @@ void controller::execute_axis(hand_type hand,
 }
 void controller::execute_axis(hand_type hand,
                               unsigned int axis,
-                              vector2f const &values) const {
+                              vec2f const &values) const {
   /// Wrapper to call two directional functions simultaneously
   execute_axis(hand, axis, axis_direction_type::X, values.x);
   execute_axis(hand, axis, axis_direction_type::Y, values.y);

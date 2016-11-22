@@ -102,7 +102,7 @@ void manager::init() {
       std::cout << "VRStorm: Initialised, driver: " << vr_driver << ", display: " << vr_display << std::endl;
 
       {
-        vector2<uint32_t> this_render_target_size;
+        vec2<uint32_t> this_render_target_size;
         hmd_handle->GetRecommendedRenderTargetSize(&this_render_target_size.x, &this_render_target_size.y);
         render_target_size = this_render_target_size;
       }
@@ -190,7 +190,7 @@ void manager::init() {
           std::cout << "VRStorm: Unknown chaperone calibration state " << chaperone->GetCalibrationState() << std::endl;
           break;
         }
-        vector2f play_area_size;
+        vec2f play_area_size;
         if(chaperone->GetPlayAreaSize(&play_area_size.x, &play_area_size.y)) {
           std::cout << "VRStorm: Play area size: " << render_target_size << std::endl;
         } else {
@@ -201,7 +201,7 @@ void manager::init() {
             std::cout << ": " << VR_GetVRInitErrorAsEnglishDescription(vr_error) << std::endl;
           }
         }
-        std::array<vector3f, 4> play_area_rect;
+        std::array<vec3f, 4> play_area_rect;
         {
           vr::HmdQuad_t play_area_quad;
           if(chaperone->GetPlayAreaRect(&play_area_quad)) {
@@ -479,7 +479,7 @@ void manager::init() {
       enabled = true;
       update();
       {
-        vector3f const head_position(hmd_position.get_translation());
+        vec3f const head_position(hmd_position.get_translation());
         if(head_position.y == 0.0f) {
           std::cout << "VRStorm: HMD initial position is invalid, defaulting to " << head_height << "m starting head height" << std::endl;
         } else {
@@ -525,11 +525,11 @@ void manager::update() {
     std::array<vr::TrackedDevicePose_t, vr::k_unMaxTrackedDeviceCount> tracked_device_poses;
     compositor->WaitGetPoses(tracked_device_poses.data(), vr::k_unMaxTrackedDeviceCount, nullptr, 0);
     if(tracked_device_poses[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid) {     // update HMD state
-      hmd_position = matrix4f::from_row_major_34_array(*tracked_device_poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking.m).inverse();
+      hmd_position = mat4f::from_row_major_34_array(*tracked_device_poses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking.m).inverse();
     }
     for(auto &it : controllers) {                                               // update controller states
       if(tracked_device_poses[it.id].bPoseIsValid) {
-        it.position = matrix4f::from_row_major_34_array(*tracked_device_poses[it.id].mDeviceToAbsoluteTracking.m);
+        it.position = mat4f::from_row_major_34_array(*tracked_device_poses[it.id].mDeviceToAbsoluteTracking.m);
       }
     }
 
@@ -541,8 +541,8 @@ void manager::update() {
         std::cout << "VRStorm: Inter-pupillary distance changed from " << ipd * 1000.0f << "mm to " << new_ipd * 1000.0f << "mm" << std::endl;
       }
       ipd = new_ipd;
-      eye_to_head_transform[static_cast<unsigned int>(vr::EVREye::Eye_Left )] = matrix4f::from_row_major_34_array(*hmd_handle->GetEyeToHeadTransform(vr::EVREye::Eye_Left ).m).inverse();
-      eye_to_head_transform[static_cast<unsigned int>(vr::EVREye::Eye_Right)] = matrix4f::from_row_major_34_array(*hmd_handle->GetEyeToHeadTransform(vr::EVREye::Eye_Right).m).inverse();
+      eye_to_head_transform[static_cast<unsigned int>(vr::EVREye::Eye_Left )] = mat4f::from_row_major_34_array(*hmd_handle->GetEyeToHeadTransform(vr::EVREye::Eye_Left ).m).inverse();
+      eye_to_head_transform[static_cast<unsigned int>(vr::EVREye::Eye_Right)] = mat4f::from_row_major_34_array(*hmd_handle->GetEyeToHeadTransform(vr::EVREye::Eye_Right).m).inverse();
     }
 
     vr::VREvent_t event;
@@ -865,7 +865,7 @@ void manager::update() {
   #endif // VRSTORM_DISABLED
 }
 
-vector2<GLsizei> const &manager::get_render_target_size() const {
+vec2<GLsizei> const &manager::get_render_target_size() const {
   /// Return the size of the render target for this VR system
   return render_target_size;
 }
@@ -891,7 +891,7 @@ vector2<GLsizei> const &manager::get_render_target_size() const {
     /// Set up the render perspective for the specified openvr eye
     // Order: Model * View * Eye^-1 * Projection.
     glMatrixMode(GL_PROJECTION);
-    glLoadMatrixf(matrix4f::from_row_major_array(*hmd_handle->GetProjectionMatrix(eye, nearplane, farplane, vr::API_OpenGL).m)); // projection matrix
+    glLoadMatrixf(mat4f::from_row_major_array(*hmd_handle->GetProjectionMatrix(eye, nearplane, farplane, vr::API_OpenGL).m)); // projection matrix
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();

@@ -194,7 +194,7 @@ public:
                       float value = 0.0f) const;
   void execute_axis(  hand_type hand,
                       unsigned int axis,
-                      vector2f const &values) const;
+                      vec2f const &values) const;
   void execute_button(hand_type hand,
                       unsigned int button,
                       actiontype action = actiontype::PRESS);

@@ -35,19 +35,19 @@ class manager {
     vr::IVRSystem     *hmd_handle = nullptr;
     vr::IVRCompositor *compositor = nullptr;
 
-    std::array<matrix4f, 2> eye_to_head_transform;
+    std::array<mat4f, 2> eye_to_head_transform;
 
     float ipd = 0.0f;
   #endif // VRSTORM_DISABLED
 
-  vector2<GLsizei> render_target_size;
+  vec2<GLsizei> render_target_size;
 
 public:
   #ifndef VRSTORM_DISABLED
     std::vector<controller> controllers;
     input::controller input_controller;
   #endif // VRSTORM_DISABLED
-  matrix4f hmd_position;
+  mat4f hmd_position;
 
   float nearplane = 0.2f;                                                       // camera near and far planes
   float farplane = 1000.0f;
@@ -63,7 +63,7 @@ public:
 
   void update() VRSTORM_CONST_IF_DISABLED;
 
-  vector2<GLsizei> const &get_render_target_size() const __attribute__((__const__));
+  vec2<GLsizei> const &get_render_target_size() const __attribute__((__const__));
 
   #ifndef VRSTORM_DISABLED
     std::string get_tracked_device_string(vr::TrackedDeviceIndex_t device_index,

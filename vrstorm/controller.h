@@ -15,7 +15,7 @@ struct controller {
   unsigned int id = 0;
   input::controller::hand_type hand = input::controller::hand_type::UNKNOWN;
 
-  matrix4f position;
+  mat4f position;
 
   #ifndef VRSTORM_DISABLED
     vr::RenderModel_t* model = nullptr;
