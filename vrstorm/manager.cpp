@@ -500,7 +500,8 @@ void manager::init() {
 void manager::shutdown() {
   /// Shut down the VR system
   #ifndef VRSTORM_DISABLED
-    if(lib) {
+    if(lib && enabled) {
+      std::cout << "VRStorm: Shutting down." << std::endl;
       try {
         auto VR_ShutdownInternal = load_symbol<decltype(&vr::VR_ShutdownInternal)>(lib, "VR_ShutdownInternal");
         if(VR_ShutdownInternal) {
