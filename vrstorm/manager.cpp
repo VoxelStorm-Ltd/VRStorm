@@ -56,13 +56,9 @@ void manager::init() {
       }
       std::cout << "VRStorm: VR runtime installed in " << VR_RuntimePath() << std::endl;
       if(!VR_IsHmdPresent()) {
-        #ifdef PLATFORM_WINDOWS
-          std::cout << "VRStorm: OpenVR says there's no head mounted display present, but we're on Windows and it often lies, so we'll try to initialise anyway." << std::endl;
-        #else
-          std::cout << "VRStorm: No head mounted display present." << std::endl;
-          shutdown();
-          return;
-        #endif // PLATFORM_WINDOWS
+        std::cout << "VRStorm: No head mounted display present." << std::endl;
+        shutdown();
+        return;
       }
       std::cout << "VRStorm: Head mounted display may be present, initialising..." << std::endl;
 
