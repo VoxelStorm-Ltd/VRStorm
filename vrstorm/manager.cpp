@@ -485,7 +485,7 @@ void manager::init() {
       }
       std::cout << "VRStorm: Successfully initialised." << std::endl;
     } catch(std::exception &e) {
-      std::cout << "VRStorm: Exception in startup: " << e.what() << std::endl;
+      std::cout << "VRStorm: Exception at startup: " << e.what() << std::endl;
       shutdown();
     }
   #else
