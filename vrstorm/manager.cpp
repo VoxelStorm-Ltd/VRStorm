@@ -40,20 +40,14 @@ void manager::init() {
       //bool (*VR_IsRuntimeInstalled)() = (decltype(&vr::VR_IsRuntimeInstalled))dlsym(lib, "VR_IsRuntimeInstalled");
       //auto VR_IsRuntimeInstalled = reinterpret_cast<decltype(&vr::VR_IsRuntimeInstalled)>(dlsym(lib, "VR_IsRuntimeInstalled"));
       auto VR_IsRuntimeInstalled                 = load_symbol<decltype(&vr::VR_IsRuntimeInstalled                )>(lib, "VR_IsRuntimeInstalled");
-      auto VR_IsHmdPresent                       = load_symbol<decltype(&vr::VR_IsHmdPresent                      )>(lib, "VR_IsHmdPresent");
-      auto VR_RuntimePath                        = load_symbol<decltype(&vr::VR_RuntimePath                       )>(lib, "VR_RuntimePath");
-      auto VR_InitInternal                       = load_symbol<decltype(&vr::VR_InitInternal                      )>(lib, "VR_InitInternal");
-      auto VR_IsInterfaceVersionValid            = load_symbol<decltype(&vr::VR_IsInterfaceVersionValid           )>(lib, "VR_IsInterfaceVersionValid");
-      auto VR_GetVRInitErrorAsEnglishDescription = load_symbol<decltype(&vr::VR_GetVRInitErrorAsEnglishDescription)>(lib, "VR_GetVRInitErrorAsEnglishDescription");
-      auto VR_GetGenericInterface                = load_symbol<decltype(&vr::VR_GetGenericInterface               )>(lib, "VR_GetGenericInterface");
-      auto VR_GetInitToken                       = load_symbol<decltype(&vr::VR_GetInitToken                      )>(lib, "VR_GetInitToken");
-
       // preliminary checks
       if(!VR_IsRuntimeInstalled()) {
         std::cout << "VRStorm: No VR runtime installed." << std::endl;
         shutdown();
         return;
       }
+      auto VR_RuntimePath                        = load_symbol<decltype(&vr::VR_RuntimePath                       )>(lib, "VR_RuntimePath");
+      auto VR_IsHmdPresent                       = load_symbol<decltype(&vr::VR_IsHmdPresent                      )>(lib, "VR_IsHmdPresent");
       std::cout << "VRStorm: VR runtime installed in " << VR_RuntimePath() << std::endl;
       if(!VR_IsHmdPresent()) {
         std::cout << "VRStorm: No head mounted display present." << std::endl;
@@ -61,6 +55,17 @@ void manager::init() {
         return;
       }
       std::cout << "VRStorm: Head mounted display may be present, initialising..." << std::endl;
+      #ifdef DEBUG_VRSTORM
+        std::cout << "VRStorm: DEBUG: Loading symbols..." << std::endl;
+      #endif // DEBUG_VRSTORM
+      auto VR_InitInternal                       = load_symbol<decltype(&vr::VR_InitInternal                      )>(lib, "VR_InitInternal");
+      auto VR_IsInterfaceVersionValid            = load_symbol<decltype(&vr::VR_IsInterfaceVersionValid           )>(lib, "VR_IsInterfaceVersionValid");
+      auto VR_GetVRInitErrorAsEnglishDescription = load_symbol<decltype(&vr::VR_GetVRInitErrorAsEnglishDescription)>(lib, "VR_GetVRInitErrorAsEnglishDescription");
+      auto VR_GetGenericInterface                = load_symbol<decltype(&vr::VR_GetGenericInterface               )>(lib, "VR_GetGenericInterface");
+      auto VR_GetInitToken                       = load_symbol<decltype(&vr::VR_GetInitToken                      )>(lib, "VR_GetInitToken");
+      #ifdef DEBUG_VRSTORM
+        std::cout << "VRStorm: DEBUG: Symbols loaded successfully." << std::endl;
+      #endif // DEBUG_VRSTORM
 
       // initialise the vr system
       vr::EVRInitError vr_error = vr::VRInitError_None;
@@ -74,12 +79,18 @@ void manager::init() {
         //std::cout << "VRStorm: VR init error: " << VR_GetVRInitErrorAsSymbol(vr_error) << std::endl;
         return;
       }
+      #ifdef DEBUG_VRSTORM
+        std::cout << "VRStorm: DEBUG: Context cleared." << std::endl;
+      #endif // DEBUG_VRSTORM
       if(!VR_IsInterfaceVersionValid(vr::IVRSystem_Version)) {
         vr_error = vr::VRInitError_Init_InterfaceNotFound;
         std::cout << "VRStorm: Unable to init VR runtime, interface not found: " << VR_GetVRInitErrorAsEnglishDescription(vr_error) << std::endl;
         shutdown();
         return;
       }
+      #ifdef DEBUG_VRSTORM
+        std::cout << "VRStorm: DEBUG: Interface version is valid." << std::endl;
+      #endif // DEBUG_VRSTORM
       // the following replaces CheckClear();
       if(vr::VRToken() != VR_GetInitToken()) {
         vr_ctx.Clear();
@@ -87,12 +98,14 @@ void manager::init() {
       }
       // the following replaces hmd_handle = vr::VRSystem();
       hmd_handle = static_cast<vr::IVRSystem*>(VR_GetGenericInterface(vr::IVRSystem_Version, &vr_error));
-
       if(!hmd_handle) {
         std::cout << "VRStorm: Unable to init VR runtime, although no error was returned!" << std::endl;
         shutdown();
         return;
       }
+      #ifdef DEBUG_VRSTORM
+        std::cout << "VRStorm: DEBUG: HMD handle obtained." << std::endl;
+      #endif // DEBUG_VRSTORM
       std::string vr_driver  = get_tracked_device_string(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_TrackingSystemName_String);
       std::string vr_display = get_tracked_device_string(vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_SerialNumber_String);
       std::cout << "VRStorm: Initialised, driver: " << vr_driver << ", display: " << vr_display << std::endl;

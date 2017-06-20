@@ -237,4 +237,16 @@ inline size_t hash_value(controller::binding_button const &this_binding) {
 }
 }
 
+namespace std {
+
+template<>
+struct hash<vrstorm::input::controller::binding_button> {
+  /// Forward the binding's hash function for std::hash specialisation
+  size_t operator()(vrstorm::input::controller::binding_button const &this_binding) const {
+    return this_binding.hash_value();
+  }
+};
+
+}
+
 #endif // VRSTORM_INPUT_CONTROLLER_H_INCLUDED

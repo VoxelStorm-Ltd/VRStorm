@@ -6,8 +6,7 @@
 #include "inputstorm/binding_sets/base.h"
 #include "vrstorm/input/controller.h"
 
-namespace vrstorm {
-namespace binding_sets {
+namespace vrstorm::binding_sets {
 
 #define BINDING_SET_TYPE boost::bimap<boost::bimaps::unordered_multiset_of<T>, boost::bimaps::unordered_multiset_of<input::controller::binding_button>>
 #define BASE_TYPE inputstorm::binding_sets::base_crtp_adapter<T, BINDING_SET_TYPE, controller_button>
@@ -67,12 +66,15 @@ void controller_button<T>::unbind(std::string const &binding_name,
   #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
   auto &binding_set(this->binding_sets[binding_name]);
   auto const &binding_range(binding_set.left.equal_range(control));
-  auto const binding_range_copy(binding_range);                                 // copy the binding range to update after
+  std::unordered_set<input::controller::binding_button> bindings_to_update;
+  for(auto const &it : boost::make_iterator_range(binding_range.first, binding_range.second)) {
+    bindings_to_update.emplace(it.second);                                      // queue each button that was affected by the change to update after
+  }
 
   binding_set.left.erase(control);                                              // clear the current associations with that control
 
-  for(auto const &it : boost::make_iterator_range(binding_range_copy.first, binding_range_copy.second)) {
-    update(it.second);
+  for(auto const &it : bindings_to_update) {
+    update(it);                                                                 // update each button that was affected by the change
   }
 }
 
@@ -182,7 +184,6 @@ void controller_button<T>::update_all(controltype control) {
 #undef BINDING_SET_TYPE
 #undef BASE_TYPE
 
-}
 }
 
 #endif // VRSTORM_BINDING_SETS_CONTROLLER_BUTTON_H_INCLUDED

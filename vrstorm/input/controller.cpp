@@ -1,8 +1,7 @@
 #include <iostream>
 #include "vrstorm/manager.h"
 
-namespace vrstorm {
-namespace input {
+namespace vrstorm::input {
 
 controller::controller(manager &this_parent)
   : parent(this_parent) {
@@ -914,5 +913,4 @@ void controller::draw_binding_graphs() const {
   }
 }
 
-}
 }

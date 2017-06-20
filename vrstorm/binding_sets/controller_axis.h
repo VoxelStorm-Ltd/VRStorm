@@ -6,8 +6,7 @@
 #include "inputstorm/binding_sets/base.h"
 #include "vrstorm/input/controller.h"
 
-namespace vrstorm {
-namespace binding_sets {
+namespace vrstorm::binding_sets {
 
 #define BINDING_SET_TYPE std::unordered_multimap<T, input::controller::binding_axis>
 #define BASE_TYPE inputstorm::binding_sets::base_crtp_adapter<T, BINDING_SET_TYPE, controller_axis>
@@ -173,7 +172,6 @@ void controller_axis<T>::update_all(controltype control) {
 #undef BINDING_SET_TYPE
 #undef BASE_TYPE
 
-}
 }
 
 #endif // VRSTORM_BINDING_SETS_CONTROLLER_AXIS_H_INCLUDED
