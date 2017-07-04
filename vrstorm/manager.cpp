@@ -21,15 +21,31 @@ void manager::init() {
   #ifndef VRSTORM_DISABLED
     try {
       // dynamic library load
-      #ifdef PLATFORM_WINDOWS
-        lib = load_dynamic({"./openvr_api.dll", "openvr_api.dll"});
-      #else
-        #ifdef NDEBUG
-          lib = load_dynamic({"./libopenvr_api.so", "libopenvr_api.so"});
+      #if defined(PLATFORM_WINDOWS)
+        #ifdef PLATFORM_64BIT
+          lib = load_dynamic({"./openvr_api64.dll", "openvr_api64.dll", "./openvr_api.dll", "openvr_api.dll"});
         #else
-          lib = load_dynamic({"./libopenvr_api.so.dbg", "libopenvr_api.so.dbg", "./libopenvr_api.so", "libopenvr_api.so"});
-        #endif // NDEBUG
-      #endif // PLATFORM_WINDOWS
+          lib = load_dynamic({"./openvr_api.dll", "openvr_api.dll"});
+        #endif // PLATFORM_64BIT
+      #elif defined(PLATFORM_LINUX)
+        #ifdef PLATFORM_64BIT
+          #ifdef NDEBUG
+            lib = load_dynamic({"./libopenvr_api.so", "libopenvr_api.so"});
+          #else
+            lib = load_dynamic({"./libopenvr_api.so.dbg", "libopenvr_api.so.dbg", "./libopenvr_api.so", "libopenvr_api.so"});
+          #endif // NDEBUG
+        #else
+          #ifdef NDEBUG
+            lib = load_dynamic({"./libopenvr_api32.so", "libopenvr_api32.so", "./libopenvr_api.so", "libopenvr_api.so"});
+          #else
+            lib = load_dynamic({"./libopenvr_api32.so.dbg", "libopenvr_api32.so.dbg", "./libopenvr_api32.so", "libopenvr_api32.so", "./libopenvr_api.so.dbg", "libopenvr_api.so.dbg", "./libopenvr_api.so", "libopenvr_api.so"});
+          #endif // NDEBUG
+        #endif // PLATFORM_64BIT
+      #elif defined(PLATFORM_MACOS)
+        lib = load_dynamic({"./libopenvr_api.dylib", "libopenvr_api.dylib"});
+      #else
+        #error "platform_defines.h must be included!"
+      #endif
       if(!lib) {
         std::cout << "VRStorm: No OpenVR dynamic library found, not initialising." << std::endl;
         shutdown();
