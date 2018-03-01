@@ -222,10 +222,10 @@ inline controller::actiontype operator++(controller::actiontype &i) {
 inline controller::actiontype operator*(controller::actiontype c) {
   return c;
 }
-inline controller::actiontype begin(controller::actiontype thistype __attribute__((__unused__))) {
+inline controller::actiontype begin(controller::actiontype thistype [[maybe_unused]]) {
   return controller::actiontype::BEGIN;
 }
-inline controller::actiontype end(controller::actiontype thistype __attribute__((__unused__))) {
+inline controller::actiontype end(controller::actiontype thistype [[maybe_unused]]) {
   return controller::actiontype::END;
 }
 

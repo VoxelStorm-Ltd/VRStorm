@@ -941,7 +941,7 @@ void manager::setup_render_perspective_right() {
 
 void manager::submit_frame_left(GLuint buffer
                                   #ifdef VRSTORM_DISABLED
-                                    __attribute__((__unused__))
+                                    [[maybe_unused]]
                                   #endif // VRSTORM_DISABLED
                                 ) {
   /// Send a frame to the compositor for the left eye
@@ -952,7 +952,7 @@ void manager::submit_frame_left(GLuint buffer
 }
 void manager::submit_frame_right(GLuint buffer
                                    #ifdef VRSTORM_DISABLED
-                                     __attribute__((__unused__))
+                                     [[maybe_unused]]
                                    #endif // VRSTORM_DISABLED
                                  ) {
   /// Send a frame to the compositor for the right eye

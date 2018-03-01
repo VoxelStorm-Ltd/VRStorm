@@ -22,7 +22,7 @@ void controller::init() {
           if(parent.hmd_handle->GetInt32TrackedDeviceProperty(get_id(hand), static_cast<vr::ETrackedDeviceProperty>(vr::Prop_Axis0Type_Int32 + axis)) == vr::k_eControllerAxis_None) {
           */
         #endif // defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
-            bind_axis(hand, axis, static_cast<axis_direction_type>(axis_direction_id), [](float value __attribute__((__unused__))){}); // default to noop
+            bind_axis(hand, axis, static_cast<axis_direction_type>(axis_direction_id), [](float value [[maybe_unused]]){}); // default to noop
             axis_bindings[hand_id][axis][axis_direction_id].enabled = false;
         #if defined(DEBUG_VRSTORM) || defined(DEBUG_INPUTSTORM)
           /*
