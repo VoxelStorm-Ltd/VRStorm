@@ -2,7 +2,7 @@
 
 VoxelStorm's legacy VR library, as used in [sphereFACE](http://sphereface.com).
 
-Depends on OpenVR.
+Depends on OpenVR and [VectorStorm](https://github.com/VoxelStorm-Ltd/vectorstorm).
 
 Tested under MinGW.
 
