@@ -516,7 +516,7 @@ void controller::capture_axis(std::function<void(hand_type,
     }
   }
 
-  float constexpr const deadzone = 0.5f;
+  float constexpr deadzone = 0.5f;
   for(unsigned int hand_id = 0; hand_id != max; ++hand_id) {
     auto const hand = static_cast<hand_type>(hand_id);
     if(!get_enabled(hand)) {
@@ -590,7 +590,7 @@ void controller::capture_axis(std::function<void(binding_axis const&)> callback,
     }
   }
 
-  float constexpr const deadzone = 0.5f;
+  float constexpr deadzone = 0.5f;
   for(unsigned int hand_id = 0; hand_id != max; ++hand_id) {
     auto const hand = static_cast<hand_type>(hand_id);
     if(!get_enabled(hand)) {

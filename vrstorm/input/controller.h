@@ -109,10 +109,10 @@ public:
   };
 
   // limits
-  static unsigned int constexpr const max = static_cast<unsigned int>(hand_type::RIGHT) + 1;
-  static unsigned int constexpr const max_axis = vr::k_unControllerStateAxisCount;
-  static unsigned int constexpr const max_axis_direction = static_cast<unsigned int>(axis_direction_type::Y) + 1;
-  static unsigned int constexpr const max_button = vr::k_EButton_Max;
+  static unsigned int constexpr max = static_cast<unsigned int>(hand_type::RIGHT) + 1;
+  static unsigned int constexpr max_axis = vr::k_unControllerStateAxisCount;
+  static unsigned int constexpr max_axis_direction = static_cast<unsigned int>(axis_direction_type::Y) + 1;
+  static unsigned int constexpr max_button = vr::k_EButton_Max;
 
 private:
   // data
