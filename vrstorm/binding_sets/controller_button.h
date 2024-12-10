@@ -1,5 +1,4 @@
-#ifndef VRSTORM_BINDING_SETS_CONTROLLER_BUTTON_H_INCLUDED
-#define VRSTORM_BINDING_SETS_CONTROLLER_BUTTON_H_INCLUDED
+#pragma once
 
 #include <boost/bimap.hpp>
 #include <boost/bimap/unordered_multiset_of.hpp>
@@ -185,5 +184,3 @@ void controller_button<T>::update_all(controltype control) {
 #undef BASE_TYPE
 
 }
-
-#endif // VRSTORM_BINDING_SETS_CONTROLLER_BUTTON_H_INCLUDED

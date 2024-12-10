@@ -1,5 +1,4 @@
-#ifndef VRSTORM_BINDING_SETS_CONTROLLER_AXIS_H_INCLUDED
-#define VRSTORM_BINDING_SETS_CONTROLLER_AXIS_H_INCLUDED
+#pragma once
 
 #include <unordered_map>
 #include <boost/range/iterator_range.hpp>
@@ -173,5 +172,3 @@ void controller_axis<T>::update_all(controltype control) {
 #undef BASE_TYPE
 
 }
-
-#endif // VRSTORM_BINDING_SETS_CONTROLLER_AXIS_H_INCLUDED

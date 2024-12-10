@@ -1,5 +1,4 @@
-#ifndef CONTROLLER_H_INCLUDED
-#define CONTROLLER_H_INCLUDED
+#pragma once
 
 #ifdef __MINGW32__
   #include <openvr_mingw.hpp>
@@ -23,5 +22,3 @@ struct controller {
 };
 
 }
-
-#endif // CONTROLLER_H_INCLUDED

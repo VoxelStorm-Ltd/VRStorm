@@ -1,5 +1,4 @@
-#ifndef VRSTORM_MANAGER_H_INCLUDED
-#define VRSTORM_MANAGER_H_INCLUDED
+#pragma once
 
 #include <string>
 #include <vector>
@@ -80,5 +79,3 @@ public:
 };
 
 }
-
-#endif // VRSTORM_MANAGER_H_INCLUDED

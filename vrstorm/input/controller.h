@@ -1,5 +1,4 @@
-#ifndef VRSTORM_INPUT_CONTROLLER_H_INCLUDED
-#define VRSTORM_INPUT_CONTROLLER_H_INCLUDED
+#pragma once
 
 #include <functional>
 #ifdef __MINGW32__
@@ -248,5 +247,3 @@ struct hash<vrstorm::input::controller::binding_button> {
 };
 
 }
-
-#endif // VRSTORM_INPUT_CONTROLLER_H_INCLUDED
